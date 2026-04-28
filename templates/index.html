@@ -435,7 +435,15 @@
 
     <!-- STAGE 2: Analysis -->
     <div id="view-2" class="view-section">
-        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+        <div class="controls">
+            <button class="btn btn-secondary" onclick="goToStage(1)">← Назад</button>
+            <button class="btn btn-primary" id="btn-generate" onclick="generateBack()">
+                🤖 Сгенерировать ответ
+            </button>
+            <button class="btn btn-danger" onclick="resetApp()">Отмена</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-top: 20px;">
             <!-- Bad Card Side -->
             <div>
                 <h2 style="color: white; margin-bottom: 15px;">🚩 Самая слабая карточка</h2>
@@ -452,14 +460,6 @@
                 <h2 style="color: white; margin-bottom: 15px;">✅ Образцы хороших карточек</h2>
                 <div id="good-cards-grid" class="cards-grid"></div>
             </div>
-        </div>
-
-        <div class="controls">
-            <button class="btn btn-secondary" onclick="goToStage(1)">← Назад</button>
-            <button class="btn btn-primary" id="btn-generate" onclick="generateBack()">
-                🤖 Сгенерировать ответ
-            </button>
-            <button class="btn btn-danger" onclick="resetApp()">Отмена</button>
         </div>
     </div>
 
