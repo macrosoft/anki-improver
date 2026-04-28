@@ -194,7 +194,7 @@ def select_cards_api():
             cards.append({
                 "id": note["noteId"],
                 "front": strip_html(front_raw),
-                "back": strip_html(back_raw)
+                "back": back_raw
             })
         
         return jsonify({

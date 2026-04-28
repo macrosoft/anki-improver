@@ -120,6 +120,18 @@ async function loadDecks(settings) {
 loadModels();
 
 // --- Helpers ---
+function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, function(m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m];
+    });
+}
+
 function setStage(stageNum) {
     appState.stage = stageNum;
     
@@ -173,7 +185,7 @@ function createCardHTML(card, index, isBad = false) {
     return `
         <div class="${isBad ? 'reason-header' : ''}" style="font-size: 0.8em; color: #888; margin-bottom:5px;">#${index + 1}</div>
         <div class="card-content card-front">${card.front}</div>
-        <div class="card-content card-back">${card.back.replace(/\n/g, '<br>')}</div>
+        <div class="card-content card-back">${escapeHTML(card.back).replace(/\n/g, '<br>')}</div>
     `;
 }
 
