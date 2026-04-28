@@ -22,7 +22,7 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {"model": DEFAULT_MODEL}
+    return {"model": DEFAULT_MODEL, "deck": DECK}
 
 
 def save_settings(settings):
@@ -146,6 +146,15 @@ def models_api():
     except Exception as e:
         return jsonify({"error": str(e), "models": []}), 500
 
+@app.route('/api/decks', methods=['GET'])
+def decks_api():
+    try:
+        deck_names = anki("deckNames")
+        return jsonify({"decks": deck_names})
+    except Exception as e:
+        return jsonify({"error": str(e), "decks": []}), 500
+
+
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings_api():
     if request.method == 'GET':
@@ -153,13 +162,13 @@ def settings_api():
         return jsonify(settings)
     else:
         data = request.json
-        model = data.get("model")
-        if not model:
-            return jsonify({"error": "Модель не указана"}), 400
         settings = load_settings()
-        settings["model"] = model
+        if "model" in data:
+            settings["model"] = data["model"]
+        if "deck" in data:
+            settings["deck"] = data["deck"]
         save_settings(settings)
-        return jsonify({"success": True, "model": model})
+        return jsonify({"success": True, "model": settings.get("model"), "deck": settings.get("deck")})
 
 @app.route('/')
 def index():
@@ -168,7 +177,9 @@ def index():
 @app.route('/api/select_cards', methods=['GET'])
 def select_cards_api():
     try:
-        note_ids = anki("findNotes", query=f'deck:"{DECK}"')
+        settings = load_settings()
+        selected_deck = settings.get("deck", DECK)
+        note_ids = anki("findNotes", query=f'deck:"{selected_deck}"')
         if len(note_ids) < CARDS_TO_SELECT:
             return jsonify({"error": f"В колоде недостаточно карточек ({len(note_ids)})"}), 400
         
