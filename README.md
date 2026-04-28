@@ -14,7 +14,7 @@ A 3-step workflow:
 
 - Python 3
 - Anki running with the [Anki Connector](https://github.com/FooSoft/anki-connect) addon (default port `8765`)
-- A deck named `[Основная колода]` (or change the `DECK` variable in `app.py`)
+- Anki running with at least one deck
 - An OpenAI-compatible LLM server running on `http://localhost:8080` (e.g., Ollama, llama.cpp, LocalAI)
 
 ## Installation
@@ -43,7 +43,7 @@ The selected LLM model is saved in `settings.json` (auto-created on first run). 
 |---|---|---|
 | `ANKI_URL` | `http://localhost:8765` | Anki Connector address |
 | `LM_BASE_URL` | `http://localhost:8080` | LLM server address |
-| `DECK` | `[Основная колода]` | Target Anki deck name |
+| `DECK` | `[Основная колода]` | Fallback deck name (selected in UI) |
 | `CARDS_TO_SELECT` | `10` | Number of cards per round |
 | `DEFAULT_MODEL` | `Qwen3.6-27B` | Default LLM model |
 
@@ -53,6 +53,7 @@ The selected LLM model is saved in `settings.json` (auto-created on first run). 
 |---|---|---|
 | `/` | GET | Main UI |
 | `/api/models` | GET | List available LLM models |
+| `/api/decks` | GET | List available Anki decks |
 | `/api/settings` | GET / POST | Get or save settings |
 | `/api/select_cards` | GET | Select random cards from Anki |
 | `/api/select_worst` | POST | AI evaluates cards, finds the worst |
