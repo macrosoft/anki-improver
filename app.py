@@ -11,11 +11,11 @@ app = Flask(__name__)
 ANKI_URL = "http://localhost:8765"
 LM_BASE_URL = "http://localhost:8080"
 LM_URL = f"{LM_BASE_URL}/v1/chat/completions"
-DECK = '[Основная колода]'
+DECK = ''
 EXAMPLE_COUNT = 10
 CARDS_TO_SELECT = 10
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "settings.json")
-DEFAULT_MODEL = "Qwen3.6-27B"
+DEFAULT_MODEL = ""
 
 
 def load_settings():

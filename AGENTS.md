@@ -18,7 +18,7 @@
 
 | Variable | Value | Note |
 |---|---|---|
-| `DECK` | `[Основная колода]` | Fallback Anki deck name (UI override) |
+| `DECK` | Fallback Anki deck name (UI override) |
 | `ANKI_URL` | `http://localhost:8765` | Anki Connector endpoint |
 | `LM_BASE_URL` | `http://localhost:8080` | LLM server base URL |
 | `CARDS_TO_SELECT` | `10` | Cards per analysis round |

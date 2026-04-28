@@ -35,7 +35,7 @@ python app.py
 
 ## Configuration
 
-The selected LLM model is saved in `settings.json` (auto-created on first run). The default model is `Qwen3.6-27B`. Change the `DEFAULT_MODEL` in `app.py` if needed.
+The selected LLM model is saved in `settings.json` (auto-created on first run). Change the `DEFAULT_MODEL` in `app.py` if needed.
 
 ### Key Settings in `app.py`
 
@@ -43,9 +43,9 @@ The selected LLM model is saved in `settings.json` (auto-created on first run). 
 |---|---|---|
 | `ANKI_URL` | `http://localhost:8765` | Anki Connector address |
 | `LM_BASE_URL` | `http://localhost:8080` | LLM server address |
-| `DECK` | `[Основная колода]` | Fallback deck name (selected in UI) |
+| `DECK` | Fallback deck name (selected in UI) |
 | `CARDS_TO_SELECT` | `10` | Number of cards per round |
-| `DEFAULT_MODEL` | `Qwen3.6-27B` | Default LLM model |
+| `DEFAULT_MODEL` | Default LLM model |
 
 ## API Endpoints
 
