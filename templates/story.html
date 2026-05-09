@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Anki AI — Рассказ{% endblock %}
+{% block header_pre %}
+<h1>📖 Story Mode</h1>
+<p style="opacity:0.7; margin-bottom:16px; font-size:14px;">
+    Слова из due-карточек → рассказ от AI
+</p>
+{% endblock %}
+{% block header_nav %}
+<div style="margin-top:12px;">
+    <a href="/" style="color:rgba(255,255,255,0.7); font-size:14px;">← На главную (Improver)</a>
+</div>
+{% endblock %}
+{% block content %}
+<!-- Step 1: Select Cards -->
+<div id="view-select" class="view-section active">
+    <div class="controls">
+        <button class="btn btn-primary" id="btn-select" onclick="selectCards()">
+            🎲 Выбрать 10 карточек (is:learn)
+        </button>
+    </div>
+
+    <div id="words-container" style="margin-top:20px;">
+        <!-- Cards/words injected by JS -->
+    </div>
+
+    <div id="generate-controls" class="controls" style="display:none;">
+        <button class="btn btn-primary" id="btn-generate" onclick="generateStory()">
+            🤖 Сгенерировать рассказ
+        </button>
+    </div>
+</div>
+
+<!-- Step 2: Story -->
+<div id="view-story" class="view-section">
+    <div id="story-box" class="story-box" style="margin-top:20px;">
+        <h2 style="margin-bottom:20px;">✨ Рассказ</h2>
+        <div id="story-content" class="story-content">
+            <!-- Story injected by JS -->
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" onclick="resetView()">
+            🔄 Новый рассказ
+        </button>
+        <button class="btn btn-secondary" onclick="regenerateStory()">
+            🔁 Перегенерировать
+        </button>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let selectedCards = [];
+
+function showView(id) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    hideMessage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderBold(text) {
+    return escapeHTML(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+}
+
+async function selectCards() {
+    setLoading('btn-select', true, '🎲 Выбрать', 'Загрузка...');
+
+    try {
+        const res = await fetch('/api/story_cards', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        selectedCards = data.cards;
+
+        document.getElementById('words-container').innerHTML = '<div class="cards-grid">' +
+            data.cards.map((card, i) => `
+                <div class="card">
+                    <div class="card-header">
+                        <span>#${i + 1}</span>
+                        <span>${escapeHTML(card.back).substring(0, 60)}${card.back.length > 60 ? '...' : ''}</span>
+                    </div>
+                    <div class="card-content card-front">${escapeHTML(card.front)}</div>
+                </div>
+            `).join('') +
+        '</div>';
+
+        document.getElementById('generate-controls').style.display = '';
+        showMessage(`Найдено ${data.total} due-карточек.`, 'success');
+
+    } catch (err) {
+        showMessage('Ошибка: ' + err.message, 'error');
+    } finally {
+        setLoading('btn-select', false, '🎲 Обновить выбор', 'Загрузка...');
+    }
+}
+
+async function generateStory() {
+    setLoading('btn-generate', true, '🤖 Сгенерировать рассказ', 'LLM пишет рассказ...');
+
+    document.getElementById('story-content').innerHTML = '⏳ <em>Генерация...</em>';
+    showView('view-story');
+
+    try {
+        const res = await fetch('/api/story_generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cards: selectedCards })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        document.getElementById('story-content').innerHTML = renderBold(data.story);
+        showMessage('Рассказ готов!', 'success');
+
+    } catch (err) {
+        document.getElementById('story-content').innerHTML = '<span style="color:var(--danger);">Ошибка: ' + escapeHTML(err.message) + '</span>';
+        showMessage('Ошибка генерации рассказа', 'error');
+    } finally {
+        setLoading('btn-generate', false, '🤖 Сгенерировать рассказ', 'LLM пишет рассказ...');
+    }
+}
+
+async function regenerateStory() {
+    document.getElementById('story-content').innerHTML = '⏳ <em>Перегенерация...</em>';
+    setLoading('btn-generate', true, '🤖 Сгенерировать рассказ', 'LLM пишет рассказ...');
+    hideMessage();
+
+    try {
+        const res = await fetch('/api/story_generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cards: selectedCards })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        document.getElementById('story-content').innerHTML = renderBold(data.story);
+        showMessage('Рассказ готов!', 'success');
+    } catch (err) {
+        document.getElementById('story-content').innerHTML = '<span style="color:var(--danger);">Ошибка: ' + escapeHTML(err.message) + '</span>';
+        showMessage('Ошибка генерации рассказа', 'error');
+    } finally {
+        setLoading('btn-generate', false, '🤖 Сгенерировать рассказ', 'LLM пишет рассказ...');
+    }
+}
+
+function resetView() {
+    selectedCards = [];
+    document.getElementById('words-container').innerHTML = '';
+    document.getElementById('generate-controls').style.display = 'none';
+    document.getElementById('story-content').innerHTML = '';
+    document.getElementById('btn-select').innerHTML = '🎲 Выбрать 10 карточек (is:learn)';
+    document.getElementById('btn-select').disabled = false;
+    showView('view-select');
+    hideMessage();
+}
+</script>
+{% endblock %}

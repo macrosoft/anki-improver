@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Anki AI Improver{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="container">
+    <header>
+        {% block header_pre %}{% endblock %}
+
+        <div class="model-selector">
+            <label for="modelSelect">🧠 Модель:</label>
+            <select id="modelSelect" onchange="selectModel(this.value)">
+                <option value="">Загрузка...</option>
+            </select>
+        </div>
+
+        <div class="model-selector">
+            <label for="deckSelect">📚 Колода:</label>
+            <select id="deckSelect" onchange="selectDeck(this.value)">
+                <option value="">Загрузка...</option>
+            </select>
+        </div>
+
+        {% block header_nav %}{% endblock %}
+        {% block header_post %}{% endblock %}
+    </header>
+
+    <div id="messageArea" class="feedback"></div>
+
+    {% block content %}{% endblock %}
+</div>
+
+<script src="/static/js/common.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

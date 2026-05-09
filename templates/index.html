@@ -1,128 +1,107 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anki AI Improver</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Anki AI Improver{% endblock %}
+{% block header_pre %}
+<h1>🎴 Anki Improver</h1>
+{% endblock %}
+{% block header_nav %}
+<div style="margin-top:12px;">
+    <a href="/story" style="color:rgba(255,255,255,0.7); font-size:14px;">📖 Story Mode →</a>
+</div>
+{% endblock %}
+{% block header_post %}
+<!-- Progress Bar -->
+<div class="progress-wrapper">
+    <div class="progress-line"></div>
+    <div class="progress-line-fill" id="progressFill"></div>
 
-<div class="container">
-    <header>
-        <h1>🎴 Anki Improver</h1>
-        
-        <div class="model-selector">
-            <label for="modelSelect">🧠 Модель:</label>
-            <select id="modelSelect" onchange="selectModel(this.value)">
-                <option value="">Загрузка...</option>
-            </select>
-        </div>
-
-        <div class="model-selector">
-            <label for="deckSelect">📚 Колода:</label>
-            <select id="deckSelect" onchange="selectDeck(this.value)">
-                <option value="">Загрузка...</option>
-            </select>
-        </div>
-        
-        <!-- Progress Bar -->
-        <div class="progress-wrapper">
-            <div class="progress-line"></div>
-            <div class="progress-line-fill" id="progressFill"></div>
-            
-            <div class="step" id="step-indicator-1">
-                1
-                <div class="step-label">Выбор</div>
-            </div>
-            <div class="step" id="step-indicator-2">
-                2
-                <div class="step-label">Анализ</div>
-            </div>
-            <div class="step" id="step-indicator-3">
-                3
-                <div class="step-label">Редактор</div>
-            </div>
-        </div>
-    </header>
-
-    <div id="messageArea" class="feedback"></div>
-
-    <!-- STAGE 1: Selection -->
-    <div id="view-1" class="view-section active">
-        <div style="text-align: center; color: rgba(255,255,255,0.9); margin-bottom: 20px;">
-            <p id="deckStats">Нажмите кнопку ниже, чтобы выбрать 10 случайных карточек.</p>
-        </div>
-
-        <div class="controls">
-            <button class="btn btn-primary" id="btn-select" onclick="selectCards()">
-                🎲 Выбрать 10 карточек
-            </button>
-        </div>
-
-        <div id="cards-container-1" class="cards-grid"></div>
+    <div class="step" id="step-indicator-1">
+        1
+        <div class="step-label">Выбор</div>
+    </div>
+    <div class="step" id="step-indicator-2">
+        2
+        <div class="step-label">Анализ</div>
+    </div>
+    <div class="step" id="step-indicator-3">
+        3
+        <div class="step-label">Редактор</div>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<!-- STAGE 1: Selection -->
+<div id="view-1" class="view-section active">
+    <div style="text-align: center; color: rgba(255,255,255,0.9); margin-bottom: 20px;">
+        <p id="deckStats">Нажмите кнопку ниже, чтобы выбрать 10 случайных карточек.</p>
     </div>
 
-    <!-- STAGE 2: Analysis -->
-    <div id="view-2" class="view-section">
-        <div class="controls">
-            <button class="btn btn-secondary" onclick="goToStage(1)">← Назад</button>
-            <button class="btn btn-primary" id="btn-generate" onclick="generateBack()">
-                🤖 Сгенерировать ответ
-            </button>
-            <button class="btn btn-danger" onclick="resetApp()">Отмена</button>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-top: 20px;">
-            <!-- Bad Card Side -->
-            <div>
-                <h2 style="color: white; margin-bottom: 15px;">🚩 Самая слабая карточка</h2>
-                <div id="bad-card-wrapper" class="card selected-bad" style="pointer-events: none; opacity: 0.9;">
-                    <!-- Content injected by JS -->
-                </div>
-                <div id="llm-reason" class="reason-box" style="margin-top: 15px; display: none;">
-                    <!-- Reason injected by JS -->
-                </div>
-            </div>
-
-            <!-- Good Cards Side -->
-            <div>
-                <h2 style="color: white; margin-bottom: 15px;">✅ Образцы хороших карточек</h2>
-                <div id="good-cards-grid" class="cards-grid"></div>
-            </div>
-        </div>
+    <div class="controls">
+        <button class="btn btn-primary" id="btn-select" onclick="selectCards()">
+            🎲 Выбрать 10 карточек
+        </button>
     </div>
 
-    <!-- STAGE 3: Editor -->
-    <div id="view-3" class="view-section">
-        <div class="editor-area">
-            <h2 style="margin-bottom: 20px;">✨ Улучшение карточки</h2>
-            
-            <div class="input-group">
-                <label class="input-label">Вопрос (Front):</label>
-                <div id="editor-front" class="display-box"></div>
-            </div>
-
-            <div class="input-group">
-                <label class="input-label">Сгенерированный ответ (Back):</label>
-                <textarea id="editor-back" rows="8" placeholder="AI ответ появится здесь..."></textarea>
-                <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
-                    Вы можете отредактировать этот текст перед сохранением.
-                </p>
-            </div>
-
-            <div class="controls" style="justify-content: flex-end;">
-                <button class="btn btn-secondary" onclick="goToStage(2)">← Назад</button>
-                <button class="btn btn-danger" onclick="resetApp()">Отклонить</button>
-                <button class="btn btn-success" id="btn-save" onclick="saveCard()">
-                    ✓ Сохранить в Anki
-                </button>
-            </div>
-        </div>
-    </div>
-
+    <div id="cards-container-1" class="cards-grid"></div>
 </div>
 
+<!-- STAGE 2: Analysis -->
+<div id="view-2" class="view-section">
+    <div class="controls">
+        <button class="btn btn-secondary" onclick="goToStage(1)">← Назад</button>
+        <button class="btn btn-primary" id="btn-generate" onclick="generateBack()">
+            🤖 Сгенерировать ответ
+        </button>
+        <button class="btn btn-danger" onclick="resetApp()">Отмена</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-top: 20px;">
+        <!-- Bad Card Side -->
+        <div>
+            <h2 style="color: white; margin-bottom: 15px;">🚩 Самая слабая карточка</h2>
+            <div id="bad-card-wrapper" class="card selected-bad" style="pointer-events: none; opacity: 0.9;">
+                <!-- Content injected by JS -->
+            </div>
+            <div id="llm-reason" class="reason-box" style="margin-top: 15px; display: none;">
+                <!-- Reason injected by JS -->
+            </div>
+        </div>
+
+        <!-- Good Cards Side -->
+        <div>
+            <h2 style="color: white; margin-bottom: 15px;">✅ Образцы хороших карточек</h2>
+            <div id="good-cards-grid" class="cards-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- STAGE 3: Editor -->
+<div id="view-3" class="view-section">
+    <div class="editor-area">
+        <h2 style="margin-bottom: 20px;">✨ Улучшение карточки</h2>
+
+        <div class="input-group">
+            <label class="input-label">Вопрос (Front):</label>
+            <div id="editor-front" class="display-box"></div>
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Сгенерированный ответ (Back):</label>
+            <textarea id="editor-back" rows="8" placeholder="AI ответ появится здесь..."></textarea>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
+                Вы можете отредактировать этот текст перед сохранением.
+            </p>
+        </div>
+
+        <div class="controls" style="justify-content: flex-end;">
+            <button class="btn btn-secondary" onclick="goToStage(2)">← Назад</button>
+            <button class="btn btn-danger" onclick="resetApp()">Отклонить</button>
+            <button class="btn btn-success" id="btn-save" onclick="saveCard()">
+                ✓ Сохранить в Anki
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
 <script src="/static/js/script.js"></script>
-</body>
-</html>
+{% endblock %}

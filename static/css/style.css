@@ -367,6 +367,29 @@ textarea:disabled {
 }
 
 /* Responsive */
+/* Story Mode */
+.story-box {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.story-content {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-main);
+}
+
+.story-content strong {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.story-content br {
+    margin-bottom: 8px;
+}
+
 @media (max-width: 600px) {
     .cards-grid { grid-template-columns: 1fr; }
     .controls { flex-direction: column; width: 100%; }

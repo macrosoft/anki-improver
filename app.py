@@ -170,9 +170,98 @@ def settings_api():
         save_settings(settings)
         return jsonify({"success": True, "model": settings.get("model"), "deck": settings.get("deck")})
 
+def ask_llm_story(cards):
+    words_text = "\n".join(
+        [f"{i+1}. {c['front']} — {strip_html(c['back'])}" for i, c in enumerate(cards)]
+    )
+
+    prompt = f"""You are a creative English teacher. Write a short, coherent story in English that naturally incorporates ALL of the following words and phrases:
+
+{words_text}
+
+Rules:
+1. Use each word or phrase at least once, naturally in context.
+2. When a word or phrase first appears, wrap it in **bold** (e.g., **word**).
+3. The story should be engaging and make sense as a whole.
+4. Keep the story length reasonable (2-4 paragraphs).
+5. Do not add any markdown formatting other than bold (**).
+6. Return ONLY the story text, no preamble or explanation."""
+
+    r = requests.post(
+        LM_URL,
+        json={
+            "model": get_model(),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7
+        },
+        timeout=120
+    ).json()
+
+    return r["choices"][0]["message"]["content"].strip()
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/story')
+def story():
+    return render_template('story.html')
+
+
+@app.route('/api/story_cards', methods=['POST'])
+def story_cards_api():
+    try:
+        settings = load_settings()
+        selected_deck = settings.get("deck", DECK)
+
+        card_ids = anki("findCards", query=f'deck:"{selected_deck}" is:learn')
+
+        if len(card_ids) < 3:
+            lapse_ids = anki("findCards", query=f'deck:"{selected_deck}" prop:lapses>=1')
+            card_ids = list(set(card_ids + lapse_ids))
+
+        if len(card_ids) == 0:
+            return jsonify({"error": "Нет карточек для повторения в этой колоде"}), 400
+
+        note_ids = anki("cardsToNotes", cards=card_ids)
+        note_ids = list(set(note_ids))
+
+        notes = anki("notesInfo", notes=note_ids)
+
+        cards = []
+        for note in notes:
+            front_raw = note["fields"]["Front"]["value"]
+            back_raw = note["fields"]["Back"]["value"]
+            cards.append({
+                "id": note["noteId"],
+                "front": strip_html(front_raw),
+                "back": strip_html(back_raw)
+            })
+
+        random.shuffle(cards)
+        cards = cards[:CARDS_TO_SELECT]
+
+        return jsonify({"cards": cards, "total": len(cards)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/story_generate', methods=['POST'])
+def story_generate_api():
+    try:
+        data = request.json
+        cards = data.get('cards')
+
+        if not cards or len(cards) == 0:
+            return jsonify({"error": "Нет карточек для рассказа"}), 400
+
+        story = ask_llm_story(cards)
+
+        return jsonify({"story": story})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/select_cards', methods=['GET'])
 def select_cards_api():
