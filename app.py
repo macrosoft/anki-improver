@@ -51,6 +51,80 @@ def anki(action, **params):
     except Exception as e:
         raise Exception(f"Anki Error: {str(e)}")
 
+def llm_request(payload, timeout=300):
+    r = requests.post(LM_URL, json=payload, timeout=timeout).json()
+    if r.get("error"):
+        msg = r["error"].get("message", r["error"]) if isinstance(r["error"], dict) else r["error"]
+        raise Exception(f"LLM error: {msg}")
+    if "choices" not in r or not r["choices"]:
+        raise Exception(f"LLM error: unexpected response: {r}")
+    return r
+
+def extract_json(text, required_keys=None):
+    """Extract the first valid JSON object from arbitrary LLM text.
+
+    If required_keys is given, the object matching those keys (if any)
+    is preferred over earlier objects in the text.
+    """
+    if not text:
+        return None
+
+    def get_candidates():
+        try:
+            yield json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
+        if fenced:
+            try:
+                yield json.loads(fenced.group(1))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        start = text.find("{")
+        while start != -1:
+            depth = 0
+            in_string = False
+            escaped = False
+            for i in range(start, len(text)):
+                ch = text[i]
+                if in_string:
+                    if escaped:
+                        escaped = False
+                    elif ch == "\\":
+                        escaped = True
+                    elif ch == '"':
+                        in_string = False
+                else:
+                    if ch == '"':
+                        in_string = True
+                    elif ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            candidate = text[start:i + 1]
+                            try:
+                                yield json.loads(candidate)
+                            except (json.JSONDecodeError, TypeError):
+                                break
+            start = text.find("{", start + 1)
+
+    if not required_keys:
+        required_keys = []
+
+    fallback = None
+    for obj in get_candidates():
+        if not isinstance(obj, dict):
+            continue
+        if fallback is None:
+            fallback = obj
+        if all(key in obj for key in required_keys):
+            return obj
+    return fallback
+
+
 def strip_html(text):
     text = text.replace("\n", "")
     text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
@@ -62,6 +136,14 @@ def strip_html(text):
 def ask_llm_worst_card(cards_info):
     cards_text = "\n---\n".join(
         [f"**{i+1}. Front:** {c['front']}\n\n**Back:** {c['back'].replace(chr(10), ' ')}" for i, c in enumerate(cards_info)]
+    )
+
+    system_prompt = (
+        "You are an expert at evaluating Anki flashcard quality for English learners. "
+        "Pay special attention to irregular verbs: the front side shows the base verb, "
+        "and a high-quality card must list the second (past simple) and third (past "
+        "participle) forms on the back side. Cards missing this information on the "
+        "back should be penalized."
     )
     
     prompt = f"""You are an expert at evaluating Anki flashcard quality.
@@ -81,29 +163,39 @@ Format your response as a JSON object:
 }}
 """
     
-    r = requests.post(
-        LM_URL,
-        json={
+    r = llm_request(
+        {
             "model": get_model(),
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            "chat_template_kwargs": {"enable_thinking": False},
             "temperature": 0.2,
-            "response_format": {"type": "json_object"}
+            "response_format": {"type": "json_object"},
+            "max_tokens": 256
         },
-        timeout=60
-    ).json()
+        timeout=300
+    )
     
     content = r["choices"][0]["message"]["content"]
-    try:
-        return json.loads(content)
-    except:
-        match = re.search(r'({.*})', content, re.DOTALL)
-        if match:
-            return json.loads(match.group(1))
-        return {"worst_index": 1, "reason": "LLM failed to format output, defaulting to 1"}
+    parsed = extract_json(content, required_keys=["worst_index"])
+    if isinstance(parsed, dict):
+        return parsed
+    if not content.strip():
+        raise Exception("LLM вернула пустой ответ (thinking не отключён?)")
+    return {"worst_index": 1, "reason": "LLM failed to format output, defaulting to 1"}
 
 def ask_llm_generate(front, good_examples):
     example_text = "\n---\n".join(
         [f"**Front:** {f}\n\n**Back:** {b.replace(chr(10), ' ')}" for f, b in good_examples]
+    )
+
+    system_prompt = (
+        "You are an English teacher helping to improve Anki cards for learning English. "
+        "The front side contains a word, phrase, or question. If it is an irregular "
+        "verb, the back side must include its second (past simple) and third (past "
+        "participle) forms, along with the translation or explanation."
     )
     
     prompt = f"""
@@ -123,17 +215,24 @@ Rules:
 5. Return ONLY the text of the back side.
 """
     
-    r = requests.post(
-        LM_URL,
-        json={
+    r = llm_request(
+        {
             "model": get_model(),
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            "chat_template_kwargs": {"enable_thinking": False},
+            "temperature": 0.5,
+            "max_tokens": 1024
         },
-        timeout=60
-    ).json()
+        timeout=300
+    )
     
-    return r["choices"][0]["message"]["content"].strip()
+    content = r["choices"][0]["message"]["content"].strip()
+    if not content:
+        raise Exception("LLM вернула пустой ответ (thinking не отключён?)")
+    return content
 
 @app.route('/api/models', methods=['GET'])
 def models_api():
@@ -187,17 +286,21 @@ Rules:
 5. Do not add any markdown formatting other than bold (**).
 6. Return ONLY the story text, no preamble or explanation."""
 
-    r = requests.post(
-        LM_URL,
-        json={
+    r = llm_request(
+        {
             "model": get_model(),
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7
+            "chat_template_kwargs": {"enable_thinking": False},
+            "temperature": 0.7,
+            "max_tokens": 1500
         },
-        timeout=120
-    ).json()
+        timeout=300
+    )
 
-    return r["choices"][0]["message"]["content"].strip()
+    content = r["choices"][0]["message"]["content"].strip()
+    if not content:
+        raise Exception("LLM вернула пустой ответ (thinking не отключён?)")
+    return content
 
 
 @app.route('/')
@@ -304,8 +407,11 @@ def select_worst_api():
         
         cards_info = [{"front": c["front"], "back": c["back"]} for c in cards]
         llm_res = ask_llm_worst_card(cards_info)
-        
-        worst_idx = llm_res.get("worst_index", 1) - 1
+
+        try:
+            worst_idx = int(llm_res.get("worst_index", 1)) - 1
+        except (ValueError, TypeError):
+            worst_idx = 0
         reason = llm_res.get("reason", "Не указана причина")
         
         worst_idx = max(0, min(worst_idx, len(cards)-1))
