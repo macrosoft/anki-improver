@@ -5,6 +5,20 @@ function escapeHTML(str) {
     });
 }
 
+// --- Masonry ("tetris") card layout helpers ---
+// Deterministic height pattern: neighbours in a row always differ,
+// and the mix repeats every 10 cards so the columns interlock.
+const CARD_SIZE_PATTERN = [
+    'size-m', 'size-xl', 'size-s', 'size-l', 'size-s',
+    'size-xl', 'size-m', 'size-s', 'size-l', 'size-m'
+];
+
+function applyCardSizing(el, index) {
+    el.classList.add(CARD_SIZE_PATTERN[index % CARD_SIZE_PATTERN.length]);
+    // --i drives the staggered "dropping piece" animation delay
+    el.style.setProperty('--i', index);
+}
+
 function showMessage(text, type) {
     const el = document.getElementById('messageArea');
     el.textContent = text;
@@ -63,6 +77,7 @@ async function loadModels() {
 
         if (!currentModel || !models.includes(currentModel)) {
             select.value = models[0];
+            selectModel(models[0]);
         }
 
         loadDecks(settingsData);

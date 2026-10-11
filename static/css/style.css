@@ -172,27 +172,60 @@ h1 {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Cards Grid */
+/* Cards Grid — masonry ("tetris") packing via CSS columns.
+   Cards keep their own height and stack into columns without empty gaps. */
 .cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    columns: 300px;
+    column-gap: 20px;
     margin-top: 20px;
+    /* Collapse whitespace between inline-flex cards (innerHTML templates) */
+    font-size: 0;
 }
 
 .card {
     background: white;
     border-radius: 16px;
     padding: 20px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 24px -10px rgba(15, 23, 42, 0.18);
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
     border: 1px solid rgba(0,0,0,0.05);
+    /* Restore base size after font-size:0 on .cards-grid */
+    font-size: 16px;
 }
 
 .card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 14px 30px -10px rgba(15, 23, 42, 0.28);
+}
+
+/* One card = one unbreakable "block" inside a column */
+.cards-grid .card {
+    display: inline-flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 20px;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+    animation: cardDrop 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+/* The last block inside a card stretches so the card fills its "cell" */
+.cards-grid .card > :last-child {
+    flex: 1 1 auto;
+}
+
+/* Height variety — classes assigned by JS in a deterministic pattern */
+.cards-grid .card.size-s  { min-height: 140px; }
+.cards-grid .card.size-m  { min-height: 200px; }
+.cards-grid .card.size-l  { min-height: 260px; }
+.cards-grid .card.size-xl { min-height: 320px; }
+
+@keyframes cardDrop {
+    from { opacity: 0; transform: translateY(-24px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .card.selected-bad {
@@ -217,6 +250,8 @@ h1 {
     margin-bottom: 10px;
     font-size: 14px;
     line-height: 1.5;
+    overflow-wrap: break-word;
+    hyphens: auto;
 }
 
 .card-front {
@@ -228,6 +263,10 @@ h1 {
 .card-back {
     border-left: 4px solid var(--success);
     color: #475569;
+}
+
+.card-content:last-child {
+    margin-bottom: 0;
 }
 
 /* Forms & Inputs */
@@ -391,7 +430,9 @@ textarea:disabled {
 }
 
 @media (max-width: 600px) {
-    .cards-grid { grid-template-columns: 1fr; }
+    .cards-grid { columns: 1; }
+    /* In a single column height variety is pointless — drop the min-heights */
+    .cards-grid .card[class*="size-"] { min-height: 0; }
     .controls { flex-direction: column; width: 100%; }
     .btn { width: 100%; justify-content: center; }
     .step-label { display: none; }

@@ -66,6 +66,7 @@ async function selectCards() {
         data.cards.forEach((card, idx) => {
             const div = document.createElement('div');
             div.className = 'card';
+            applyCardSizing(div, idx);
             div.innerHTML = createCardHTML(card, idx);
             container.appendChild(div);
         });
@@ -118,6 +119,7 @@ async function selectWorst() {
         data.good_cards.forEach((card, idx) => {
             const div = document.createElement('div');
             div.className = 'card';
+            applyCardSizing(div, idx);
             div.innerHTML = createCardHTML(card, idx);
             goodContainer.appendChild(div);
         });
